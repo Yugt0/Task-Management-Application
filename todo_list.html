@@ -32,6 +32,25 @@
     </div>
 
     <script>
+        //Load the users and registered users
+        document.addEventListener("DOMContentLoaded", () => {
+            loadUsers();
+            loadTasks();
+        });
+
+        function registerUser() {
+            let username = document.getElementById("userInput").value.trim();
+            if (!username) return alert("Enter a valid username!");
+
+            let users = JSON.parse(localStorage.getItem("users")) || [];
+            if (!users.includes(username)) {
+                users.push(username);
+                localStorage.setItem("users", JSON.stringify(users));
+            }
+            document.getElementById("userInput").value = "";
+            loadUsers();
+        }
+
         function addTask() {
             let taskText = document.getElementById("taskInput").value.trim();
             let assignedTo = document.getElementById("assignedToInput").value;
@@ -89,6 +108,13 @@
             loadTasks();
         }
 
+        //Delete Task
+        function deleteTask(index) {
+            let tasks = JSON.parse(localStorage.getItem("tasks"));
+            tasks.splice(index, 1);
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            loadTasks();
+        }
     </script>
 </body>
 </html>
