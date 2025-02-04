@@ -108,6 +108,17 @@
             loadTasks();
         }
 
+        //Edit Task
+        function editTask(index) {
+            let tasks = JSON.parse(localStorage.getItem("tasks"));
+            let newText = prompt("Edit Task:", tasks[index].text);
+            if (newText !== null && newText.trim() !== "") {
+                tasks[index].text = newText.trim();
+                localStorage.setItem("tasks", JSON.stringify(tasks));
+                loadTasks();
+            }
+        }
+
         //Delete Task
         function deleteTask(index) {
             let tasks = JSON.parse(localStorage.getItem("tasks"));
