@@ -51,6 +51,18 @@
             loadUsers();
         }
 
+        function loadUsers() {
+            let userSelect = document.getElementById("assignedToInput");
+            userSelect.innerHTML = '<option value="">Assign to a user</option>';
+            let users = JSON.parse(localStorage.getItem("users")) || [];
+            users.forEach(user => {
+                let option = document.createElement("option");
+                option.value = user;
+                option.textContent = user;
+                userSelect.appendChild(option);
+            });
+        }
+
         function addTask() {
             let taskText = document.getElementById("taskInput").value.trim();
             let assignedTo = document.getElementById("assignedToInput").value;
@@ -58,15 +70,22 @@
             if (!taskText) return alert("Enter a task!");
             if (!assignedTo) return alert("Select a user to assign the task!");
 
+            // Retrieve existing tasks
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-            tasks.push({ text: taskText, assignedTo, status: "pending", comments: [] });
+
+            // Add the new task to the tasks array
+            tasks.push({ text: taskText, assignedTo: assignedTo, status: "pending", comments: [] });
+
+            // Save the updated tasks array to localStorage
             localStorage.setItem("tasks", JSON.stringify(tasks));
 
-            sendNotification(assignedTo, `New Task Assigned: "${taskText}"`);
+            // Clear input fields
             document.getElementById("taskInput").value = "";
             document.getElementById("assignedToInput").value = "";
+
+            // Reload tasks dynamically
             loadTasks();
-        }
+        }       
 
         function loadTasks() {
             let taskList = document.getElementById("taskList");
@@ -93,9 +112,7 @@
                     <div class="mt-2">
                         <input type="text" id="commentInput${index}" class="form-control mb-2" placeholder="Add a comment">
                         <button class="btn btn-info btn-sm" onclick="addComment(${index})">Add Comment</button>
-                    </div>
-                    <ul id="commentList${index}" class="list-group mt-2">${renderComments(task.comments, index)}</ul>
-                `;
+                    </div>`;
 
                 taskList.appendChild(listItem);
             });
