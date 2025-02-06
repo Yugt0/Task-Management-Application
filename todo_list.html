@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Management System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <style>
+        .task-table {
+            width: 100%;
+            margin-top: 20px;
+        }
+        .task-table th, .task-table td {
+            text-align: center;
+            padding: 10px;
+            vertical-align: middle;
+        }
+        .task-table th {
+            background-color: #f8f9fa;
+        }
+        .task-table td {
+            border-top: 1px solid #dee2e6;
+        }
+        .task-actions button {
+            margin-left: 5px;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <div class="container mt-5">
@@ -19,20 +40,54 @@
         <!-- Task Input -->
         <div class="input-group mt-4">
             <input type="text" id="taskInput" class="form-control" placeholder="Enter new task">
+            <input type="date" id="dueDateInput" class="form-control">
+            <select id="priorityInput" class="form-control">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
             <select id="assignedToInput" class="form-control">
                 <option value="">Assign to a user</option>
             </select>
-            <button onclick="addTask()" class="btn btn-primary">Add Task</button>
+            <button onclick="addOrUpdateTask()" class="btn btn-primary">Add Task</button>
+        </div>
+
+        <!-- Filters -->
+        <div class="mt-3">
+            <select id="filterStatus" class="form-control" onchange="loadTasks()">
+                <option value="all">All Statuses</option>
+                <option value="to do">To Do</option>
+                <option value="in progress">In Progress</option>
+                <option value="done">Done</option>
+            </select>
+            <select id="filterPriority" class="form-control mt-2" onchange="loadTasks()">
+                <option value="all">All Priorities</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
         </div>
 
         <!-- Task List -->
         <h3 class="mt-4">Tasks</h3>
-        <ul id="taskList" class="list-group"></ul>
-
+        <table class="table task-table">
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Due Date</th>
+                    <th>Priority</th>
+                    <th>Assigned To</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="taskList"></tbody>
+        </table>
     </div>
 
     <script>
-        //Load the users and registered users
+        let editingIndex = -1;  // Track the index of the task being edited
+
         document.addEventListener("DOMContentLoaded", () => {
             loadUsers();
             loadTasks();
@@ -63,85 +118,101 @@
             });
         }
 
-        function addTask() {
+        function addOrUpdateTask() {
             let taskText = document.getElementById("taskInput").value.trim();
+            let dueDate = document.getElementById("dueDateInput").value;
+            let priority = document.getElementById("priorityInput").value;
             let assignedTo = document.getElementById("assignedToInput").value;
 
             if (!taskText) return alert("Enter a task!");
+            if (!dueDate) return alert("Enter a due date!");
             if (!assignedTo) return alert("Select a user to assign the task!");
 
-            // Retrieve existing tasks
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 
-            // Add the new task to the tasks array
-            tasks.push({ text: taskText, assignedTo: assignedTo, status: "pending", comments: [] });
+            if (editingIndex === -1) {
+                // Add a new task
+                tasks.push({ text: taskText, dueDate: dueDate, priority: priority, assignedTo: assignedTo, status: "to do" });
+            } else {
+                // Update an existing task
+                tasks[editingIndex] = { text: taskText, dueDate: dueDate, priority: priority, assignedTo: assignedTo, status: tasks[editingIndex].status };
+                editingIndex = -1;  // Reset editing mode
+            }
 
-            // Save the updated tasks array to localStorage
             localStorage.setItem("tasks", JSON.stringify(tasks));
 
-            // Clear input fields
+            // Reset input fields after adding or updating the task
             document.getElementById("taskInput").value = "";
+            document.getElementById("dueDateInput").value = "";
+            document.getElementById("priorityInput").value = "low";
             document.getElementById("assignedToInput").value = "";
 
-            // Reload tasks dynamically
             loadTasks();
-        }       
+        }
 
         function loadTasks() {
             let taskList = document.getElementById("taskList");
             taskList.innerHTML = "";
             let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 
+            let filterStatus = document.getElementById("filterStatus").value;
+            let filterPriority = document.getElementById("filterPriority").value;
+
+            tasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
             tasks.forEach((task, index) => {
-                if (!task.comments) task.comments = [];
+                if (filterStatus !== "all" && task.status !== filterStatus) return;
+                if (filterPriority !== "all" && task.priority !== filterPriority) return;
 
-                let listItem = document.createElement("li");
-                listItem.className = "list-group-item";
+                let row = document.createElement("tr");
 
-                listItem.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="${task.status === 'completed' ? 'text-decoration-line-through' : ''}">
-                            ${task.text} (Assigned to: ${task.assignedTo})
-                        </span>
-                        <div>
-                            <button class="btn btn-success btn-sm me-2" onclick="completeTask(${index})">Complete</button>
-                            <button class="btn btn-warning btn-sm me-2" onclick="editTask(${index})">Edit</button>
-                            <button class="btn btn-danger btn-sm" onclick="deleteTask(${index})">Delete</button>
-                        </div>
-                    </div>
-                    <div class="mt-2">
-                        <input type="text" id="commentInput${index}" class="form-control mb-2" placeholder="Add a comment">
-                        <button class="btn btn-info btn-sm" onclick="addComment(${index})">Add Comment</button>
-                    </div>`;
-
-                taskList.appendChild(listItem);
+                row.innerHTML = `
+                    <td>${task.text}</td>
+                    <td>${task.dueDate}</td>
+                    <td>${task.priority}</td>
+                    <td>${task.assignedTo}</td>
+                    <td>
+                        <select class="form-select form-select-sm" onchange="updateTaskStatus(${index}, this.value)">
+                            <option value="to do" ${task.status === "to do" ? "selected" : ""}>To Do</option>
+                            <option value="in progress" ${task.status === "in progress" ? "selected" : ""}>In Progress</option>
+                            <option value="done" ${task.status === "done" ? "selected" : ""}>Done</option>
+                        </select>
+                    </td>
+                    <td class="task-actions">
+                        <button class="btn btn-danger btn-sm" onclick="deleteTask(${index})">Delete</button>
+                        <button class="btn btn-warning btn-sm" onclick="editTask(${index})">Edit</button>
+                    </td>
+                `;
+                taskList.appendChild(row);
             });
         }
 
-        function completeTask(index) {
+        function updateTaskStatus(index, status) {
             let tasks = JSON.parse(localStorage.getItem("tasks"));
-            tasks[index].status = "completed";
+            tasks[index].status = status;
             localStorage.setItem("tasks", JSON.stringify(tasks));
             loadTasks();
         }
 
-        //Edit Task
-        function editTask(index) {
-            let tasks = JSON.parse(localStorage.getItem("tasks"));
-            let newText = prompt("Edit Task:", tasks[index].text);
-            if (newText !== null && newText.trim() !== "") {
-                tasks[index].text = newText.trim();
-                localStorage.setItem("tasks", JSON.stringify(tasks));
-                loadTasks();
-            }
-        }
-
-        //Delete Task
         function deleteTask(index) {
             let tasks = JSON.parse(localStorage.getItem("tasks"));
             tasks.splice(index, 1);
             localStorage.setItem("tasks", JSON.stringify(tasks));
             loadTasks();
+        }
+
+        function editTask(index) {
+            let tasks = JSON.parse(localStorage.getItem("tasks"));
+            let task = tasks[index];
+
+            // Populate the form fields with the task data
+            document.getElementById("taskInput").value = task.text;
+            document.getElementById("dueDateInput").value = task.dueDate;
+            document.getElementById("priorityInput").value = task.priority;
+            document.getElementById("assignedToInput").value = task.assignedTo;
+
+            // Set the editing index to the task being edited
+            editingIndex = index;
         }
     </script>
 </body>
