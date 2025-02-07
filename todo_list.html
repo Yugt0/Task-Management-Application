@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <style>
+        body{
+            background-color: #efefef;
+        }
+        .task-table {
+            width: 100%;
+            margin-top: 20px;
+        }
+        .task-table th, .task-table td {
+            text-align: center;
+            padding: 10px;
+            vertical-align: middle;
+        }
+        .task-table th {
+            background-color: #f8f9fa;
+        }
+        .task-table td {
+            border-top: 1px solid #dee2e6;
+        }
+        .task-actions button {
+            margin-left: 5px;
+        }
+        #filterStatus{
+            box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
+        }
+        #filterPriority{
+            box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
+        }
+        #filterStatus:hover{
+            background-color: gainsboro;
+        }
+        #filterPriority:hover{
+            background-color: gainsboro;
+        }
+        #task-table{
+            background-color: rgb(167, 167, 222);
+        }
+        #task-button{
+            border-radius: 30px;
+            width: 100px;
+        }
+        #task-button-edit{
+            background-color: rgb(187, 187, 247);
+            border-radius: 30px;
+            width: 100px;
+            border-style: none;
+        }
+        #task-button-register{
+            background-color: rgb(187, 187, 247);
+            border-style: none;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="text-center">Task Management System</h2>
+
+        <!-- User Registration -->
+        <div class="mb-4">
+            <input type="text" id="userInput" class="form-control mb-2" placeholder="Enter your name to register">
+            <button onclick="registerUser()" class="btn btn-success" id="task-button-register">Register</button>
+        </div>
+
+        <!-- Task Input -->
+        <div class="input-group mt-4">
+            <input type="text" id="taskInput" class="form-control" placeholder="Enter new task">
+            <input type="date" id="dueDateInput" class="form-control">
+            <select id="priorityInput" class="form-control">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+            <select id="assignedToInput" class="form-control">
+                <option value="">Assign to a user</option>
+            </select>
+            <button onclick="addOrUpdateTask()" class="btn btn-primary" id="addtask-button">Add Task</button>
+        </div><br>
+        <h2>Filter Status</h2>
+        <!-- Filters -->
+        <div class="mt-3">
+            <select id="filterStatus" class="form-control" onchange="loadTasks()">
+                <option value="all">All Statuses</option>
+                <option value="to do">To Do</option>
+                <option value="in progress">In Progress</option>
+                <option value="done">Done</option>
+            </select><br>
+            <h2>Filter Priority</h2>
+            <select id="filterPriority" class="form-control mt-2" onchange="loadTasks()">
+                <option value="all">All Priorities</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+        </div>
+
+        <!-- Task List -->
+        <h3 class="mt-4">Tasks</h3>
+        <table class="table task-table" >
+            <thead >
+                <tr>
+                    <th id="task-table">Task</th>
+                    <th id="task-table">Due Date</th>
+                    <th id="task-table">Priority</th>
+                    <th id="task-table">Assigned To</th>
+                    <th id="task-table">Status</th>
+                    <th id="task-table">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="taskList"></tbody>
+        </table>
+    </div>
+    <script>
+        let editingIndex = -1;  // Track the index of the task being edited
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadUsers();
+            loadTasks();
+        });
+
+        function registerUser() {
+            let username = document.getElementById("userInput").value.trim();
+            if (!username) return alert("Enter a valid username!");
+
+            let users = JSON.parse(localStorage.getItem("users")) || [];
+            if (!users.includes(username)) {
+                users.push(username);
+                localStorage.setItem("users", JSON.stringify(users));
+            }
+            document.getElementById("userInput").value = "";
+            loadUsers();
+        }
+
+        function loadUsers() {
+            let userSelect = document.getElementById("assignedToInput");
+            userSelect.innerHTML = '<option value="">Assign to a user</option>';
+            let users = JSON.parse(localStorage.getItem("users")) || [];
+            users.forEach(user => {
+                let option = document.createElement("option");
+                option.value = user;
+                option.textContent = user;
+                userSelect.appendChild(option);
+            });
+        }
+
+        function addOrUpdateTask() {
+            let taskText = document.getElementById("taskInput").value.trim();
+            let dueDate = document.getElementById("dueDateInput").value;
+            let priority = document.getElementById("priorityInput").value;
+            let assignedTo = document.getElementById("assignedToInput").value;
+
+            if (!taskText) return alert("Enter a task!");
+            if (!dueDate) return alert("Enter a due date!");
+            if (!assignedTo) return alert("Select a user to assign the task!");
+
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+            if (editingIndex === -1) {
+                // Add a new task
+                tasks.push({ text: taskText, dueDate: dueDate, priority: priority, assignedTo: assignedTo, status: "to do" });
+            } else {
+                // Update an existing task
+                tasks[editingIndex] = { text: taskText, dueDate: dueDate, priority: priority, assignedTo: assignedTo, status: tasks[editingIndex].status };
+                editingIndex = -1;  // Reset editing mode
+            }
+
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+
+            // Reset input fields after adding or updating the task
+            document.getElementById("taskInput").value = "";
+            document.getElementById("dueDateInput").value = "";
+            document.getElementById("priorityInput").value = "low";
+            document.getElementById("assignedToInput").value = "";
+
+            loadTasks();
+        }
+
+        function loadTasks() {
+            let taskList = document.getElementById("taskList");
+            taskList.innerHTML = "";
+            let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+            let filterStatus = document.getElementById("filterStatus").value;
+            let filterPriority = document.getElementById("filterPriority").value;
+
+            tasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+            tasks.forEach((task, index) => {
+                if (filterStatus !== "all" && task.status !== filterStatus) return;
+                if (filterPriority !== "all" && task.priority !== filterPriority) return;
+
+                let row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td>${task.text}</td>
+                    <td>${task.dueDate}</td>
+                    <td>${task.priority}</td>
+                    <td>${task.assignedTo}</td>
+                    <td>
+                        <select class="form-select form-select-sm" onchange="updateTaskStatus(${index}, this.value)">
+                            <option value="to do" ${task.status === "to do" ? "selected" : ""}>To Do</option>
+                            <option value="in progress" ${task.status === "in progress" ? "selected" : ""}>In Progress</option>
+                            <option value="done" ${task.status === "done" ? "selected" : ""}>Done</option>
+                        </select>
+                    </td>
+                    <td class="task-actions">
+                        <button class="btn btn-danger btn-sm" id="task-button" onclick="deleteTask(${index})">Delete</button>
+                        <button class="btn btn-warning btn-sm" id="task-button-edit" onclick="editTask(${index})">Edit</button>
+                    </td>
+                `;
+                taskList.appendChild(row);
+            });
+        }
+
+        function updateTaskStatus(index, status) {
+            let tasks = JSON.parse(localStorage.getItem("tasks"));
+            tasks[index].status = status;
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            loadTasks();
+        }
+
+        function deleteTask(index) {
+            let tasks = JSON.parse(localStorage.getItem("tasks"));
+            tasks.splice(index, 1);
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            loadTasks();
+        }
+
+        function editTask(index) {
+            let tasks = JSON.parse(localStorage.getItem("tasks"));
+            let task = tasks[index];
+
+            // Populate the form fields with the task data
+            document.getElementById("taskInput").value = task.text;
+            document.getElementById("dueDateInput").value = task.dueDate;
+            document.getElementById("priorityInput").value = task.priority;
+            document.getElementById("assignedToInput").value = task.assignedTo;
+
+            // Set the editing index to the task being edited
+            editingIndex = index;
+        }
+    </script>
+</body>
+</html>
